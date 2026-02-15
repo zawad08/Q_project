@@ -7,11 +7,22 @@ class ParticleSystem {
         this.ctx = this.canvas.getContext('2d');
         this.particles = [];
         this.mouse = { x: null, y: null, radius: 150 };
-        this.particleCount = 150;
+        
+        // Responsive particle count based on screen size
+        const isMobile = window.innerWidth < 768;
+        this.particleCount = isMobile ? 50 : 150; // Much fewer particles on mobile
+        this.connectionDistance = isMobile ? 100 : 180; // Shorter connection distance on mobile
+        this.seed = 12345; // Fixed seed for consistent pattern
         
         this.init();
         this.animate();
         this.setupEventListeners();
+    }
+    
+    // Seeded random number generator for consistent particle positions
+    seededRandom() {
+        const x = Math.sin(this.seed++) * 10000;
+        return x - Math.floor(x);
     }
 
     init() {
@@ -26,13 +37,14 @@ class ParticleSystem {
 
     createParticles() {
         this.particles = [];
+        this.seed = 12345; // Reset seed for consistent pattern
         for (let i = 0; i < this.particleCount; i++) {
             this.particles.push({
-                x: Math.random() * this.canvas.width,
-                y: Math.random() * this.canvas.height,
-                vx: (Math.random() - 0.5) * 0.5,
-                vy: (Math.random() - 0.5) * 0.5,
-                radius: Math.random() * 2.5 + 1.5
+                x: this.seededRandom() * this.canvas.width,
+                y: this.seededRandom() * this.canvas.height,
+                vx: (this.seededRandom() - 0.5) * 0.5,
+                vy: (this.seededRandom() - 0.5) * 0.5,
+                radius: this.seededRandom() * 2.5 + 1.5
             });
         }
     }
@@ -53,9 +65,9 @@ class ParticleSystem {
                 const dy = this.particles[i].y - this.particles[j].y;
                 const distance = Math.sqrt(dx * dx + dy * dy);
 
-                if (distance < 180) {
+                if (distance < this.connectionDistance) {
                     this.ctx.beginPath();
-                    this.ctx.strokeStyle = `rgba(167, 139, 250, ${0.4 * (1 - distance / 180)})`;
+                    this.ctx.strokeStyle = `rgba(167, 139, 250, ${0.4 * (1 - distance / this.connectionDistance)})`;
                     this.ctx.lineWidth = 1;
                     this.ctx.moveTo(this.particles[i].x, this.particles[i].y);
                     this.ctx.lineTo(this.particles[j].x, this.particles[j].y);
@@ -122,6 +134,11 @@ class ParticleSystem {
 
     setupEventListeners() {
         window.addEventListener('resize', () => {
+            // Update particle count and connection distance for new screen size
+            const isMobile = window.innerWidth < 768;
+            this.particleCount = isMobile ? 50 : 150;
+            this.connectionDistance = isMobile ? 100 : 180;
+            
             this.resizeCanvas();
             this.createParticles();
         });
@@ -185,13 +202,16 @@ document.addEventListener('click', (e) => {
 });
 
 // ============================================
-// SMOOTH SCROLL FOR ANCHOR LINKS
+// SMOOTH SCROLL FOR ANCHOR LINKS (Same Page Only)
 // ============================================
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function(e) {
-        e.preventDefault();
-        const target = document.querySelector(this.getAttribute('href'));
+        const targetId = this.getAttribute('href');
+        if (targetId === '#') return; // Skip empty anchors
+        
+        const target = document.querySelector(targetId);
         if (target) {
+            e.preventDefault();
             const headerHeight = header.offsetHeight;
             const targetPosition = target.offsetTop - headerHeight;
             
@@ -241,7 +261,6 @@ cards.forEach(card => {
 
 // ============================================
 // FORM SUBMISSION HANDLING
-const WEB3FORMS_ACCESS_KEY = '6e4aa9c7-3a53-4586-88dd-81712dff247f';
 // ============================================
 const contactForm = document.querySelector('#contactForm');
 
@@ -261,19 +280,86 @@ if (contactForm) {
             return;
         }
         
-        // Create mailto link
-        const mailtoLink = `mailto:hello@qtropic.com?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(
-            `Name: ${name}\nEmail: ${email}\n\nMessage:\n${message}`
-        )}`;
+        // Validate email format
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            showNotification('Please enter a valid email address', 'error');
+            return;
+        }
         
-        // Open default email client
-        window.location.href = mailtoLink;
+        // Disable submit button temporarily
+        const submitButton = contactForm.querySelector('button[type="submit"]');
+        const originalText = submitButton.textContent;
+        submitButton.disabled = true;
+        submitButton.textContent = 'Sending...';
+        submitButton.style.opacity = '0.6';
         
-        // Show success message and reset form
-        setTimeout(() => {
-            showNotification('Thank you! Your message has been prepared. Please send it from your email client.', 'success');
-            contactForm.reset();
-        }, 500);
+        // ========================================
+        // ⭐ WEB3FORMS SETUP - PASTE YOUR KEY HERE ⭐
+        // ========================================
+        // STEP 1: Go to https://web3forms.com
+        // STEP 2: Enter hello@qtropic.com
+        // STEP 3: Get your access key
+        // STEP 4: Replace YOUR_ACCESS_KEY_HERE below with your actual key
+        // Example: const WEB3FORMS_ACCESS_KEY = 'a1b2c3d4-e5f6-7890-1234-567890abcdef';
+        // ========================================
+        
+        const WEB3FORMS_ACCESS_KEY = 'YOUR_ACCESS_KEY_HERE'; // <-- PASTE KEY HERE!
+        
+        // Check if access key is set
+        if (WEB3FORMS_ACCESS_KEY === 'YOUR_ACCESS_KEY_HERE') {
+            // Demo mode - no access key provided yet
+            setTimeout(() => {
+                showNotification(`✅ Demo Mode: Message received from ${name}! To actually send emails, please add your Web3Forms access key in script.js (line 286). Get it free at web3forms.com`, 'success');
+                contactForm.reset();
+                
+                // Re-enable button
+                submitButton.disabled = false;
+                submitButton.textContent = originalText;
+                submitButton.style.opacity = '1';
+            }, 1000);
+            return; // Stop here in demo mode
+        }
+        
+        const formData = new FormData();
+        formData.append('access_key', WEB3FORMS_ACCESS_KEY);
+        formData.append('name', name);
+        formData.append('email', email);
+        formData.append('subject', subject);
+        formData.append('message', message);
+        formData.append('from_name', 'Qtropic Contact Form');
+        formData.append('cc', 'yourgmail@gmail.com'); // Add your Gmail here if you want
+        
+        fetch('https://api.web3forms.com/submit', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Success - message sent!
+                showNotification(`Thank you, ${name}! Your message has been sent. We'll get back to you at ${email} within 24 hours.`, 'success');
+                contactForm.reset();
+            } else {
+                // Error from Web3Forms
+                showNotification('Failed to send message. Please try again or email us directly at hello@qtropic.com', 'error');
+            }
+            
+            // Re-enable button
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
+            submitButton.style.opacity = '1';
+        })
+        .catch(error => {
+            // Network or other error
+            console.error('Form submission error:', error);
+            showNotification('Error sending message. Please try again or email us directly at hello@qtropic.com', 'error');
+            
+            // Re-enable button
+            submitButton.disabled = false;
+            submitButton.textContent = originalText;
+            submitButton.style.opacity = '1';
+        });
     });
 
     // Reset border color on input
